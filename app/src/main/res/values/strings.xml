@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">Arom\'alarm</string>
+    <string name="title_home">Home</string>
+    <string name="title_dashboard">Dashboard</string>
+    <string name="title_notifications">Notifications</string>
+    <string name="device_needed_to_use_app">You need to select your Aroma31 mist maker to be able to use this app.</string>
+</resources>
