@@ -8,8 +8,13 @@ import android.companion.CompanionDeviceManager
 import android.content.*
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.SeekBar
+import android.widget.SeekBar.OnSeekBarChangeListener
+import android.widget.Switch
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.widget.SwitchCompat
 import androidx.navigation.findNavController
 import androidx.navigation.ui.AppBarConfiguration
 import androidx.navigation.ui.setupActionBarWithNavController
@@ -22,6 +27,7 @@ import java.util.regex.Pattern
 class MainActivity : AppCompatActivity() {
 
     private val SELECT_DEVICE_REQUEST_CODE: Int = 0
+    private var mac_address: String? = null
 
     private val deviceManager: CompanionDeviceManager by lazy(LazyThreadSafetyMode.NONE) {
         getSystemService(CompanionDeviceManager::class.java)
@@ -30,20 +36,35 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val pref = getSharedPreferences(Constants.DEVICE_PREFS,
+        mac_address = getSharedPreferences(Constants.DEVICE_PREFS,
             MODE_PRIVATE).getString(Constants.MAC_ADDRESS, null)
-        if (pref.isNullOrBlank()) {
+        if (mac_address.isNullOrBlank()) {
             setupCompanionDevice()
         } else {
-            startDeviceService(pref)
+            startDeviceService(mac_address!!)
         }
 
         setupUi()
+
+        val intensitySeekBar = findViewById<SeekBar>(R.id.seekBar)
+        intensitySeekBar.setOnSeekBarChangeListener(object :SeekBar.OnSeekBarChangeListener{
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                seekBar?.progress?.let { changeIntensity(it) }
+            }
+
+            override fun onStartTrackingTouch(seekBar: SeekBar?) {
+                // Nothing
+            }
+
+            override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                // Nothing
+            }
+        })
     }
 
-    private fun startDeviceService(pref: String) {
-        val intent = Intent(this, DeviceService::class.java).putExtra(Constants.MAC_ADDRESS, pref)
-        Log.i("MainActivity", intent.getStringExtra(Constants.MAC_ADDRESS) ?: "No ")
+    private fun startDeviceService(mac: String) {
+        val intent = Intent(this, DeviceService::class.java).putExtra(Constants.MAC_ADDRESS, mac)
+        Log.i("MainActivity", intent.getStringExtra(Constants.MAC_ADDRESS) ?: "No address")
         startService(intent)
     }
 
@@ -129,6 +150,31 @@ class MainActivity : AppCompatActivity() {
                 ) { dialog, which -> finish() }
                 .create().show()
         }
+    }
+
+    fun changeIntensity(intensity: Int) {
+        sendCommand(when (intensity) {
+            0 -> Constants.SET_ACTIVE_OFF
+            1 -> Constants.SET_INTENSITY_LOW
+            2 -> Constants.SET_INTENSITY_HIGH
+            else -> Constants.SET_ACTIVE_ON
+        })
+    }
+    fun togglePulsing(view: View) {
+        val switch = view as SwitchCompat
+        sendCommand(if (switch.isChecked) Constants.SET_PLUSE_ON else Constants.SET_PULSE_OFF)
+    }
+    fun toggleLight(view: View) {
+        val switch = view as SwitchCompat
+        sendCommand(if (switch.isChecked) Constants.SET_LIGHT_ON else Constants.SET_LIGHT_OFF)
+    }
+
+    private fun sendCommand(command: String) {
+        val intent = Intent(this, DeviceService::class.java).apply {
+            action = command
+            putExtra(Constants.MAC_ADDRESS, mac_address)
+        }
+        startService(intent)
     }
 }
 
